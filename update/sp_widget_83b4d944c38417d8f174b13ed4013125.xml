@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_widget">
+    <sp_widget action="INSERT_OR_UPDATE">
+        <category>custom</category>
+        <client_script><![CDATA[api.controller=function($rootScope,$scope,spUtil) {
+  /* widget controller */
+  var c = this;
+ 
+     $rootScope.$on('selectNote', function(event,data) {
+      c.server.get({
+        action: 'getNote',
+        noteID: $rootScope.noteID
+      }).then(function(r) {
+        c.data.title = r.data.note.title;
+        c.data.note = r.data.note.note;
+        c.data.noteID = r.data.note.sys_id;
+      });
+    });
+	
+	c.updateNote = function(updateType) {
+    c.server.get({
+      action: 'updateNote',
+      noteID: c.data.noteID,
+      noteBody: c.data.note,
+      noteTitle: c.data.title
+    }).then(function(r) {
+    });
+  };
+	
+	// Record removed from data object on the client and passed to server
+  c.snNoteUpdate = function(name,sysID){
+
+    for (var i=0;i<c.data.notes.length;i++){
+      if(c.data.notes[i].sys_id == name.data.sys_id){
+        if(name.data.record.note){
+          c.data.notes[i].note = name.data.record.note.display_value;
+        }
+        if(name.data.record.title){
+          c.data.notes[i].title = name.data.record.title.display_value;
+        }
+        c.server.update();
+
+      }
+    }
+  }
+
+  // Record removed from data object on the server and passed back to client
+  c.snNoteDelete = function(sysID){
+
+    c.server.get({
+      action: 'snDeleteNote',
+      noteID: sysID
+
+    }).then(function(r){
+      c.data.notes = r.data.notes;
+    });
+
+  }
+
+	spUtil.recordWatch($scope, "x_snc_createnotes_note", "ec715908c34417d8f174b13ed4013132",
+		function(name) {
+		// Fast and easy... replace the client data object with the server data object
+  if(name.data.operation == "insert"){
+    c.server.refresh();
+  }
+		// Calls a Client Script function to do the update and pass the updated data object
+  // to the server.
+  if(name.data.operation == "update"){
+    c.snNoteUpdate(name, name.data.sys_id);
+  }
+  // Calls a Client Script function which deletes a record on the server and passes
+  // the updated data object back to the client.
+  if(name.data.operation == "delete"){
+    c.snNoteDelete(name.data.sys_id);
+  }
+    console.log(name.data.operation); 
+    console.log(name); 
+    });
+	
+};]]></client_script>
+        <controller_as>c</controller_as>
+        <css/>
+        <data_table>sp_instance</data_table>
+        <demo_data/>
+        <description/>
+        <docs/>
+        <field_list/>
+        <has_preview>true</has_preview>
+        <id>u_notes_list</id>
+        <internal>false</internal>
+        <link><![CDATA[function link(scope, element, attrs, controller) {
+  
+}]]></link>
+        <name>Notes List</name>
+        <option_schema>[{"hint":"Specify a title for the Notes List widget","name":"title","section":"other","default_value":"Notes","label":"Title","type":"string"},{"hint":"Select the maximum number of records to display","name":"maximum_records_to_display","section":"other","default_value":"5","label":"Maximum records to display","type":"choice","choices":[{"label":"2","value":"2"},{"label":"3","value":"3"},{"label":"5","value":"5"},{"label":"7","value":"7"},{"label":"11","value":"11"},{"label":"13","value":"13"},{"label":"17","value":"17"}]}]</option_schema>
+        <public>false</public>
+        <roles/>
+        <script><![CDATA[(function() {
+//create an array to populate with notes
+data.notes = [];
+var noteGR = new GlideRecord('x_snc_createnotes_note');
+noteGR.addQuery('user', gs.getUser().getID());
+noteGR.orderByDesc('sys_created_on');
+noteGR.setLimit(options.maximum_records_to_display);
+noteGR.query();
+while (noteGR.next()) {
+var noteObj = {};
+//use service portal helper method to get some display values
+$sp.getRecordDisplayValues(noteObj, noteGR, 'number,title,sys_id');
+//get the first 20 characters of the description
+noteObj.note = noteGR.getValue('note').slice(0,20);
+//push the populated obj into the array
+data.notes.push(noteObj);
+}
+	
+})();]]></script>
+        <servicenow>false</servicenow>
+        <sys_class_name>sp_widget</sys_class_name>
+        <sys_created_by>Syeda</sys_created_by>
+        <sys_created_on>2026-10-19 16:56:19</sys_created_on>
+        <sys_id>83b4d944c38417d8f174b13ed4013125</sys_id>
+        <sys_mod_count>9</sys_mod_count>
+        <sys_name>Notes List</sys_name>
+        <sys_package display_value="CreateNotes" source="x_snc_createnotes">df5fd9a5090232007f44e1046c8ff69f</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="CreateNotes">df5fd9a5090232007f44e1046c8ff69f</sys_scope>
+        <sys_update_name>sp_widget_83b4d944c38417d8f174b13ed4013125</sys_update_name>
+        <sys_updated_by>Syeda</sys_updated_by>
+        <sys_updated_on>2026-10-20 07:52:55</sys_updated_on>
+        <template><![CDATA[<div class="panel panel-default" ng-show="c.data.noteID">
+  <div class="panel-heading clearfix">
+    <h3 class="panel-title pull-left">
+{{::c.options.title}}
+</h3>
+    <div class="row">
+      <div class="col-md-12">
+        <input class="form-control" id="note-title" ng-model="c.data.title" ng-change="c.updateNote('title')" ng-model-options="{debounce: 1000}"/>
+      </div>
+    </div>
+  </div>
+  <div class="panel-body">
+    <textarea class="form-control" id="note-body" ng-model="c.data.note" ng-change="c.updateNote('body')" ng-model-options="{debounce: 1000}" ></textarea>
+  </div>
+</div>]]></template>
+    </sp_widget>
+    <sys_es_latest_script action="INSERT_OR_UPDATE">
+        <id>83b4d944c38417d8f174b13ed4013125</id>
+        <sys_created_by>Syeda</sys_created_by>
+        <sys_created_on>2026-10-15 15:35:13</sys_created_on>
+        <sys_id>35151948c3c017d8f174b13ed40131a2</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_updated_by>Syeda</sys_updated_by>
+        <sys_updated_on>2026-10-15 15:35:13</sys_updated_on>
+        <table>sp_widget</table>
+        <use_es_latest>true</use_es_latest>
+    </sys_es_latest_script>
+</record_update>
